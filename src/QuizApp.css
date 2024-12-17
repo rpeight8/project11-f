@@ -31,7 +31,6 @@
 .waiting-screen h2,
 .error-screen h2 {
   font-size: 1.5rem;
-  color: #1565c0;
   margin: 0;
 }
 
@@ -45,6 +44,8 @@
   border-radius: 12px;
   text-align: center;
   transition: border-color 0.2s ease;
+  color: inherit;
+  background: #ffffff;
 }
 
 .join-screen input:focus {
@@ -97,7 +98,7 @@
   border: 2px solid #e0e0e0;
   border-radius: 12px;
   background: #ffffff;
-  color: #333333;
+  color: inherit;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -191,7 +192,7 @@
   position: absolute;
   font-size: 1.5rem;
   user-select: none;
-  transition: transform 0.1s linear;
+  transition: transform 0.3s linear;
   will-change: transform;
 }
 

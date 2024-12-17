@@ -2,52 +2,38 @@ import { useState, useCallback, useEffect } from 'react';
 import './QuizApp.css';
 
 const Confetti = () => {
-  const emojis = ['🎉', '✨', '🌟'];
   const [particles, setParticles] = useState([]);
 
   useEffect(() => {
-    const particleCount = 15;
-    const newParticles = Array.from({ length: particleCount }, (_, i) => ({
+    const emojis = ['🎉', '🎊', '✨', '⭐', '🌟'];
+    const newParticles = Array.from({ length: 20 }).map((_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: -20,
       emoji: emojis[Math.floor(Math.random() * emojis.length)],
-      speed: 2 + Math.random() * 2,
       rotation: Math.random() * 360,
-      rotationSpeed: 1 + Math.random() * 2,
     }));
 
     setParticles(newParticles);
 
-    let animationFrameId;
-    let lastTime = performance.now();
-    let currentParticles = newParticles;
-
-    const animate = currentTime => {
-      const deltaTime = (currentTime - lastTime) / 16;
-      lastTime = currentTime;
-
-      currentParticles = currentParticles
-        .map(particle => ({
+    const interval = setInterval(() => {
+      setParticles(particles =>
+        particles.map(particle => ({
           ...particle,
-          y: particle.y + particle.speed * deltaTime,
-          rotation: particle.rotation + particle.rotationSpeed * deltaTime,
+          y: particle.y + 1.5,
+          rotation: particle.rotation + 2,
         }))
-        .filter(particle => particle.y < 120);
+      );
+    }, 50);
 
-      setParticles(currentParticles);
-
-      if (currentParticles.length > 0) {
-        animationFrameId = requestAnimationFrame(animate);
-      }
-    };
-
-    animationFrameId = requestAnimationFrame(animate);
+    const cleanup = setTimeout(() => {
+      clearInterval(interval);
+      setParticles([]);
+    }, 3000);
 
     return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
+      clearInterval(interval);
+      clearTimeout(cleanup);
     };
   }, []);
 
@@ -101,7 +87,7 @@ const QuizApp = () => {
       });
     }, 1000);
 
-    const socket = new WebSocket('ws://localhost:3000');
+    const socket = new WebSocket('ws://89.110.123.46:3000/');
 
     socket.onopen = () => {
       console.log('Connected to server');
