@@ -1,91 +1,194 @@
-import React, { useState, useEffect, useCallback } from "react";
-import "./QuizApp.css";
+import { useState, useCallback, useEffect } from 'react';
+import './QuizApp.css';
 
-const QuizApp = () => {
-  const [ws, setWs] = useState(null);
-  const [playerName, setPlayerName] = useState("");
-  const [gameState, setGameState] = useState("join"); // join, waiting, playing, results
-  const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [players, setPlayers] = useState([]);
-  const [timer, setTimer] = useState(null);
-  const [results, setResults] = useState(null);
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [isAdmin] = useState(true); // For testing purposes
+const Confetti = () => {
+  const emojis = ['🎉', '✨', '🌟'];
+  const [particles, setParticles] = useState([]);
 
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:3000");
+    const particleCount = 15;
+    const newParticles = Array.from({ length: particleCount }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: -20,
+      emoji: emojis[Math.floor(Math.random() * emojis.length)],
+      speed: 2 + Math.random() * 2,
+      rotation: Math.random() * 360,
+      rotationSpeed: 1 + Math.random() * 2,
+    }));
 
-    socket.onopen = () => {
-      console.log("Connected to server");
-      setWs(socket);
+    setParticles(newParticles);
+
+    let animationFrameId;
+    let lastTime = performance.now();
+    let currentParticles = newParticles;
+
+    const animate = currentTime => {
+      const deltaTime = (currentTime - lastTime) / 16;
+      lastTime = currentTime;
+
+      currentParticles = currentParticles
+        .map(particle => ({
+          ...particle,
+          y: particle.y + particle.speed * deltaTime,
+          rotation: particle.rotation + particle.rotationSpeed * deltaTime,
+        }))
+        .filter(particle => particle.y < 120);
+
+      setParticles(currentParticles);
+
+      if (currentParticles.length > 0) {
+        animationFrameId = requestAnimationFrame(animate);
+      }
     };
 
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      handleServerMessage(data);
-    };
+    animationFrameId = requestAnimationFrame(animate);
 
     return () => {
-      socket.close();
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
   }, []);
 
-  const handleServerMessage = (data) => {
-    switch (data.type) {
-      case "PLAYER_LIST_UPDATE":
-        setPlayers(data.payload);
-        break;
-      case "NEW_QUESTION":
-        setCurrentQuestion(data.payload.question);
-        setGameState("playing");
-        setSelectedAnswer(null);
-        break;
-      case "TIMER_UPDATE":
-        setTimer(data.payload.remaining);
-        break;
-      case "QUESTION_RESULTS":
-        setResults(data.payload);
-        setGameState("results");
-        break;
-      case "GAME_OVER":
-        setGameState("gameOver");
-        setResults(data.payload);
-        break;
-    }
-  };
+  return (
+    <div className="confetti-container">
+      {particles.map(particle => (
+        <div
+          key={particle.id}
+          className="confetti-particle"
+          style={{
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+            transform: `rotate(${particle.rotation}deg)`,
+          }}
+        >
+          {particle.emoji}
+        </div>
+      ))}
+    </div>
+  );
+};
 
-  const joinGame = () => {
-    if (playerName && ws) {
-      ws.send(
+const QuizApp = () => {
+  const [ws, setWs] = useState(null);
+  const [playerName, setPlayerName] = useState('');
+  const [gameState, setGameState] = useState('join');
+  const [answers, setAnswers] = useState([]);
+  const [results, setResults] = useState(null);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [wsInstance, setWsInstance] = useState(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [buttonCooldown, setButtonCooldown] = useState(0);
+
+  const connectWebSocket = useCallback(() => {
+    if (wsInstance) {
+      wsInstance.close();
+      setWsInstance(null);
+    }
+
+    setIsConnecting(true);
+    setButtonCooldown(10);
+    setGameState('connecting');
+
+    const cooldownInterval = setInterval(() => {
+      setButtonCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(cooldownInterval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    const socket = new WebSocket('ws://localhost:3000');
+
+    socket.onopen = () => {
+      console.log('Connected to server');
+      setWs(socket);
+      setWsInstance(socket);
+      setIsConnecting(false);
+
+      socket.send(
         JSON.stringify({
-          type: "JOIN_GAME",
+          type: 'JOIN_GAME',
           payload: {
             name: playerName,
             color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
           },
         })
       );
-      setGameState("waiting");
-    }
-  };
+      setGameState('waiting');
+    };
 
-  const startGame = () => {
-    if (ws && isAdmin) {
-      ws.send(
-        JSON.stringify({
-          type: "START_GAME",
-          isAdmin: true,
-        })
+    socket.onmessage = event => {
+      const data = JSON.parse(event.data);
+      handleServerMessage(data);
+    };
+
+    socket.onclose = () => {
+      console.log('Connection closed');
+      setWs(null);
+      setIsConnecting(false);
+      setGameState('error');
+      setPlayerName(null);
+    };
+
+    socket.onerror = error => {
+      console.error('WebSocket error:', error);
+    };
+
+    return socket;
+  }, [playerName]);
+
+  const handleServerMessage = data => {
+    if (data.type === 'GAME_STATE_UPDATE') {
+      const { game, currentQuestion, players } = data.payload;
+
+      if (game.error) {
+        setGameState('error');
+        setPlayerName(null);
+        return;
+      }
+
+      if (gameState === 'connecting') {
+        return;
+      }
+
+      setSelectedAnswer(
+        players.find(player => player.name === playerName).answer
       );
+
+      if (currentQuestion) {
+        setAnswers(currentQuestion.answers || []);
+        setGameState('playing');
+      } else {
+        setAnswers([]);
+        setGameState('waiting');
+      }
+
+      if (game.correctAnswer) {
+        setResults({
+          correctAnswer: game.correctAnswer,
+        });
+      } else {
+        setResults(null);
+      }
     }
   };
 
-  const submitAnswer = (answer) => {
-    if (ws && currentQuestion) {
+  const joinGame = () => {
+    if (playerName && playerName.length >= 2) {
+      connectWebSocket();
+    }
+  };
+
+  const submitAnswer = answer => {
+    if (ws && answers && answers.length > 0 && !results) {
       setSelectedAnswer(answer);
       ws.send(
         JSON.stringify({
-          type: "SUBMIT_ANSWER",
+          type: 'SUBMIT_ANSWER',
           payload: answer,
         })
       );
@@ -99,71 +202,96 @@ const QuizApp = () => {
         type="text"
         placeholder="Enter your name"
         value={playerName}
-        onChange={(e) => setPlayerName(e.target.value)}
+        onChange={e => setPlayerName(e.target.value)}
       />
       <button onClick={joinGame}>Join Game</button>
     </div>
   );
 
+  const renderAnswers = () => (
+    <div className="question-screen">
+      <div className="options">
+        {answers.map(answer => (
+          <div key={answer.id} className="answer-container">
+            <button
+              onClick={() => submitAnswer(answer.id)}
+              className={getAnswerStyles(answer)}
+              disabled={results !== null}
+            >
+              {answer.text}
+            </button>
+            {results &&
+              results.correctAnswer === answer.id &&
+              selectedAnswer === answer.id && <Confetti />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const getAnswerStyles = answer => {
+    const classes = [];
+
+    if (results) {
+      if (results.correctAnswer === answer.id) {
+        classes.push('correct');
+      } else if (
+        selectedAnswer === answer.id &&
+        results.correctAnswer !== answer.id
+      ) {
+        classes.push('incorrect');
+      }
+    } else if (selectedAnswer === answer.id) {
+      classes.push('selected');
+    }
+
+    return classes.join(' ');
+  };
+
   const renderWaitingScreen = () => (
     <div className="waiting-screen">
-      <h2>Waiting for Game to Start</h2>
-      <div className="players-list">
-        <h3>Players:</h3>
-        {players.map((player, index) => (
-          <div
-            key={index}
-            className="player-item"
-            style={{ color: player.color }}
-          >
-            {player.name}
-          </div>
-        ))}
-      </div>
-      {isAdmin && <button onClick={startGame}>Start Game</button>}
+      <h2>Waiting for Next Question</h2>
     </div>
   );
 
-  const renderQuestion = () => (
-    <div className="question-screen">
-      <div className="timer">Time remaining: {timer}s</div>
-      <h2>{currentQuestion.question}</h2>
-      <div className="options">
-        {currentQuestion.options.map((option, index) => (
-          <button
-            key={index}
-            onClick={() => submitAnswer(index)}
-            className={selectedAnswer === index ? "selected" : ""}
-            disabled={selectedAnswer !== null}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
+  const renderErrorScreen = () => (
+    <div className="error-screen">
+      <h2>Connection Error</h2>
+      <p>Failed to connect to the game server.</p>
+      <button
+        onClick={connectWebSocket}
+        className="reconnect-button"
+        disabled={isConnecting || buttonCooldown > 0}
+      >
+        {isConnecting
+          ? 'Connecting...'
+          : buttonCooldown > 0
+          ? `Reconnect (${buttonCooldown}s)`
+          : 'Reconnect'}
+      </button>
     </div>
   );
 
-  const renderResults = () => (
-    <div className="results-screen">
-      <h2>Results</h2>
-      <div className="results-list">
-        {results?.results.map((result, index) => (
-          <div key={index} className="result-item">
-            <span>{result.name}</span>
-            <span>{result.correct ? "✅" : "❌"}</span>
-            <span>Score: {result.score}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  if (gameState === 'error') {
+    return <div className="quiz-app">{renderErrorScreen()}</div>;
+  }
+
+  if (gameState === 'join') {
+    return <div className="quiz-app">{renderJoinScreen()}</div>;
+  }
 
   return (
     <div className="quiz-app">
-      {gameState === "join" && renderJoinScreen()}
-      {gameState === "waiting" && renderWaitingScreen()}
-      {gameState === "playing" && renderQuestion()}
-      {(gameState === "results" || gameState === "gameOver") && renderResults()}
+      {gameState === 'connecting' && (
+        <div className="connecting-screen">
+          <h2>Connecting to Server</h2>
+          <p>Please wait while we establish connection...</p>
+        </div>
+      )}
+      {gameState === 'playing' && answers.length > 0 && renderAnswers()}
+      {(gameState === 'waiting' ||
+        (gameState === 'playing' && answers.length === 0)) &&
+        renderWaitingScreen()}
     </div>
   );
 };

@@ -1,107 +1,202 @@
+/* Base container for all screens */
 .quiz-app {
-  max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Common styles for all screens */
+.connecting-screen,
+.join-screen,
+.waiting-screen,
+.question-screen,
+.error-screen {
+  width: 100%;
+  max-width: 600px;
   padding: 20px;
-}
-
-.join-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
   text-align: center;
-  padding: 40px;
 }
 
+/* Screen titles */
+.connecting-screen h2,
+.join-screen h2,
+.waiting-screen h2,
+.error-screen h2 {
+  font-size: 1.5rem;
+  color: #1565c0;
+  margin: 0;
+}
+
+/* Join screen specific */
 .join-screen input {
-  padding: 10px;
-  font-size: 16px;
-  margin: 10px;
-  width: 200px;
-}
-
-.waiting-screen {
+  width: 100%;
+  max-width: 280px;
+  padding: 16px;
+  font-size: 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
   text-align: center;
+  transition: border-color 0.2s ease;
 }
 
-.players-list {
-  margin: 20px;
-  padding: 20px;
-  background: #f5f5f5;
-  border-radius: 8px;
+.join-screen input:focus {
+  outline: none;
+  border-color: #2196f3;
 }
 
-.player-item {
-  padding: 5px;
-  font-weight: bold;
+.join-screen button,
+.error-screen button {
+  min-width: 120px;
+  padding: 16px 32px;
+  font-size: 1rem;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.question-screen {
-  text-align: center;
+.join-screen button:hover,
+.error-screen button:hover:not(:disabled) {
+  background: #1976d2;
+  transform: translateY(-2px);
 }
 
-.timer {
-  font-size: 20px;
-  font-weight: bold;
-  margin: 20px;
-  color: #666;
+.join-screen button:active,
+.error-screen button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
+/* Answer options */
 .options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 600px;
+  padding: 16px;
 }
 
 .options button {
-  padding: 15px;
-  font-size: 16px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  background: white;
+  position: relative;
+  width: 100%;
+  min-height: 56px;
+  padding: 16px;
+  font-size: 1rem;
+  line-height: 1.4;
+  text-align: center;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #333333;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  word-break: break-word;
 }
 
-.options button:hover:not(:disabled) {
-  background: #f0f0f0;
+.options button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .options button.selected {
   background: #e3f2fd;
   border-color: #2196f3;
+  color: #1565c0;
+  font-weight: 500;
+}
+
+.options button.correct {
+  background: #e8f5e9;
+  border-color: #4caf50;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.options button.incorrect {
+  background: #ffebee;
+  border-color: #f44336;
+  color: #c62828;
+  font-weight: 500;
 }
 
 .options button:disabled {
-  opacity: 0.7;
+  cursor: default;
+  opacity: 1;
+}
+
+/* Error screen specific */
+.error-screen button:disabled {
+  background: #cccccc;
   cursor: not-allowed;
+  transform: none;
 }
 
-.results-screen {
-  text-align: center;
+/* Media queries for larger screens */
+@media (min-width: 768px) {
+  .quiz-app {
+    padding: 24px;
+  }
+
+  .connecting-screen h2,
+  .join-screen h2,
+  .waiting-screen h2,
+  .error-screen h2 {
+    font-size: 1.75rem;
+  }
+
+  .join-screen input {
+    max-width: 320px;
+  }
+
+  .options button {
+    min-height: 64px;
+    font-size: 1.1rem;
+  }
+
+  .options button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: #2196f3;
+    box-shadow: 0 4px 8px rgba(33, 150, 243, 0.15);
+  }
 }
 
-.results-list {
-  margin: 20px;
+.answer-container {
+  position: relative;
+  width: 100%;
 }
 
-.result-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  margin: 5px 0;
-  background: #f5f5f5;
-  border-radius: 4px;
+.confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
 }
 
-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  background: #2196f3;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.3s ease;
+.confetti-particle {
+  position: absolute;
+  font-size: 1.5rem;
+  user-select: none;
+  transition: transform 0.1s linear;
+  will-change: transform;
 }
 
-button:hover {
-  background: #1976d2;
+@media (min-width: 768px) {
+  .confetti-particle {
+    font-size: 2rem;
+  }
 }
