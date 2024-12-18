@@ -157,8 +157,8 @@ const QuizApp = () => {
       });
     }, 1000);
 
-    // const socket = new WebSocket('ws://89.110.123.46:3000/');
-    const socket = new WebSocket('ws://localhost:3000/');
+    const socket = new WebSocket('ws://89.110.123.46:3000/');
+    // const socket = new WebSocket('ws://localhost:3000/');
 
     socket.onopen = () => {
       console.log('Connected to server');
