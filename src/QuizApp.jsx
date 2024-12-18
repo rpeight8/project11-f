@@ -73,45 +73,69 @@ const Confetti = () => {
   );
 };
 
-const TypeWriter = ({ names = ['Vitali', 'someone', 'the host'] }) => {
-  const [currentText, setCurrentText] = useState(names[0]);
+const WAITING_MESSAGES = [
+  'Still waiting for Vitali to get started...',
+  'Hoping Vitali can fix the bugs and start soon',
+  'Could this be the new DPP application? 🤔',
+  'Just waiting for someone to take the lead',
+  'Patiently waiting for pizza to arrive',
+  'Did you know Vitali prefers decaf coffee?',
+  'Waiting for Vitali to deploy...?',
+  'Still debugging, or is it just a feature now?',
+  'Countdown to chaos... I mean, the game start!',
+  'New app, new bugs — let’s go!',
+  'When in doubt, blame the Sandbox system performance!',
+  'Testing: where dreams and bugs collide',
+];
+
+const TypeWriter = () => {
+  const [currentText, setCurrentText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  const [nameIndex, setNameIndex] = useState(0);
-  const [delta, setDelta] = useState(200);
+  const [messageIndex, setMessageIndex] = useState(0);
+  const [delta, setDelta] = useState(100);
 
   useEffect(() => {
     let timer;
     const tick = () => {
-      const currentName = names[nameIndex];
+      const currentMessage = WAITING_MESSAGES[messageIndex];
+
+      // Split message into array of characters and emojis
+      const chars = Array.from(currentMessage);
 
       if (isDeleting) {
-        setCurrentText(prev => prev.substring(0, prev.length - 1));
-        setDelta(100);
+        if (currentText.length > 0) {
+          // Delete by removing last character or emoji
+          setCurrentText(prev => {
+            const lastChar = prev[prev.length - 1];
+            // If last char is emoji surrogate pair, remove both characters
+            return prev.slice(0, prev.length - lastChar.length);
+          });
+        }
+        setDelta(30);
       } else {
-        setCurrentText(currentName.substring(0, currentText.length + 1));
-        setDelta(200);
+        if (currentText.length < currentMessage.length) {
+          // Add next character or emoji
+          const nextChar = chars[currentText.length];
+          setCurrentText(prev => prev + nextChar);
+        }
+        setDelta(80);
       }
 
-      if (!isDeleting && currentText === currentName) {
-        setDelta(2000); // Pause at end
+      if (!isDeleting && currentText === currentMessage) {
+        setDelta(2000);
         setIsDeleting(true);
       } else if (isDeleting && currentText === '') {
         setIsDeleting(false);
-        setNameIndex(prev => (prev + 1) % names.length);
-        setDelta(500); // Pause before typing next
+        setMessageIndex(prev => (prev + 1) % WAITING_MESSAGES.length);
+        setDelta(300);
       }
     };
 
     timer = setTimeout(tick, delta);
     return () => clearTimeout(timer);
-  }, [currentText, delta, isDeleting, nameIndex, names]);
+  }, [currentText, delta, isDeleting, messageIndex]);
 
-  return (
-    <span className="typing-name">
-      {currentText}
-      <span className="cursor" />
-    </span>
-  );
+  return <h2 className="typing-text">{currentText}</h2>;
 };
 
 const COLORS = [
@@ -157,8 +181,8 @@ const QuizApp = () => {
       });
     }, 1000);
 
-    const socket = new WebSocket('ws://89.110.123.46:3000/');
-    // const socket = new WebSocket('ws://localhost:3000/');
+    // const socket = new WebSocket('ws://89.110.123.46:3000/');
+    const socket = new WebSocket('ws://localhost:3000/');
 
     socket.onopen = () => {
       console.log('Connected to server');
@@ -338,29 +362,15 @@ const QuizApp = () => {
 
   const renderWaitingScreen = () => (
     <div className="waiting-screen">
-      <h2>
-        <span className="static-text">Waiting for </span>
-        <TypeWriter names={['Vitali', 'someone', 'the host']} />
-        <span className="static-text"> to start</span>
-      </h2>
+      <TypeWriter />
     </div>
   );
 
   const renderErrorScreen = () => (
     <div className="error-screen">
-      <h2>Connection Error</h2>
-      <p>Failed to connect to the game server.</p>
-      <button
-        onClick={connectWebSocket}
-        className="reconnect-button"
-        disabled={isConnecting || buttonCooldown > 0}
-      >
-        {isConnecting
-          ? 'Connecting...'
-          : buttonCooldown > 0
-          ? `Reconnect (${buttonCooldown}s)`
-          : 'Reconnect'}
-      </button>
+      <h2>Oops! Something went wrong</h2>
+      <p>Please refresh the page to try again</p>
+      <p className="error-emoji">😅</p>
     </div>
   );
 

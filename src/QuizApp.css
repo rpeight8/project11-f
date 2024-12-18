@@ -244,33 +244,25 @@
   margin: 0 auto;
 }
 
-.typing-text::before {
-  content: attr(data-text);
+.typing-text::after {
+  content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  color: #2196f3;
-  border-right: 2px solid #2196f3;
-  overflow: hidden;
-  animation: typing 4s steps(26) infinite;
-  white-space: nowrap;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 24px;
+  background: #2196f3;
+  animation: blink 0.8s step-end infinite;
 }
 
-@keyframes typing {
+@keyframes blink {
   0%,
   100% {
-    width: 100%;
+    opacity: 1;
   }
-  40% {
-    width: 100%;
-  }
-  60% {
-    width: 60%;
-  }
-  80% {
-    width: 100%;
+  50% {
+    opacity: 0;
   }
 }
 
@@ -286,25 +278,6 @@
   position: relative;
   min-width: 80px;
   text-align: left;
-}
-
-.cursor {
-  display: inline-block;
-  width: 2px;
-  height: 24px;
-  background: #2196f3;
-  margin-left: 2px;
-  animation: blink 0.8s step-end infinite;
-}
-
-@keyframes blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
 }
 
 .color-picker-container {
@@ -383,4 +356,22 @@
   .input-container {
     max-width: 320px;
   }
+}
+
+.error-screen {
+  text-align: center;
+  color: #d32f2f;
+}
+
+.error-screen h2 {
+  margin-bottom: 8px;
+}
+
+.error-screen p {
+  color: #666;
+}
+
+.error-emoji {
+  font-size: 2rem;
+  margin-top: 16px;
 }
