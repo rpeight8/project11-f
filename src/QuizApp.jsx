@@ -1,6 +1,17 @@
 import { useState, useCallback, useEffect } from 'react';
 import './QuizApp.css';
 
+const generateSafeColor = () => {
+  // Generate RGB values between 0 and 155 to ensure darker colors
+  const r = Math.floor(Math.random() * 156);
+  const g = Math.floor(Math.random() * 156);
+  const b = Math.floor(Math.random() * 156);
+
+  return `#${r.toString(16).padStart(2, '0')}${g
+    .toString(16)
+    .padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
+
 const Confetti = () => {
   const [particles, setParticles] = useState([]);
 
@@ -12,6 +23,10 @@ const Confetti = () => {
       y: -20,
       emoji: emojis[Math.floor(Math.random() * emojis.length)],
       rotation: Math.random() * 360,
+      speed: 1 + Math.random() * 1.5, // Reduced speed range (1-2.5)
+      rotationSpeed: -2 + Math.random() * 4, // Reduced rotation range
+      size: 0.8 + Math.random() * 0.8,
+      opacity: 0.8 + Math.random() * 0.2,
     }));
 
     setParticles(newParticles);
@@ -20,16 +35,17 @@ const Confetti = () => {
       setParticles(particles =>
         particles.map(particle => ({
           ...particle,
-          y: particle.y + 1.5,
-          rotation: particle.rotation + 2,
+          y: particle.y + particle.speed,
+          rotation: particle.rotation + particle.rotationSpeed,
+          opacity: Math.max(0, particle.opacity - 0.02),
         }))
       );
-    }, 50);
+    }, 16);
 
     const cleanup = setTimeout(() => {
       clearInterval(interval);
       setParticles([]);
-    }, 3000);
+    }, 2000);
 
     return () => {
       clearInterval(interval);
@@ -46,7 +62,8 @@ const Confetti = () => {
           style={{
             left: `${particle.x}%`,
             top: `${particle.y}%`,
-            transform: `rotate(${particle.rotation}deg)`,
+            transform: `rotate(${particle.rotation}deg) scale(${particle.size})`,
+            opacity: particle.opacity,
           }}
         >
           {particle.emoji}
@@ -55,6 +72,58 @@ const Confetti = () => {
     </div>
   );
 };
+
+const TypeWriter = ({ names = ['Vitali', 'someone', 'the host'] }) => {
+  const [currentText, setCurrentText] = useState(names[0]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [nameIndex, setNameIndex] = useState(0);
+  const [delta, setDelta] = useState(200);
+
+  useEffect(() => {
+    let timer;
+    const tick = () => {
+      const currentName = names[nameIndex];
+
+      if (isDeleting) {
+        setCurrentText(prev => prev.substring(0, prev.length - 1));
+        setDelta(100);
+      } else {
+        setCurrentText(currentName.substring(0, currentText.length + 1));
+        setDelta(200);
+      }
+
+      if (!isDeleting && currentText === currentName) {
+        setDelta(2000); // Pause at end
+        setIsDeleting(true);
+      } else if (isDeleting && currentText === '') {
+        setIsDeleting(false);
+        setNameIndex(prev => (prev + 1) % names.length);
+        setDelta(500); // Pause before typing next
+      }
+    };
+
+    timer = setTimeout(tick, delta);
+    return () => clearTimeout(timer);
+  }, [currentText, delta, isDeleting, nameIndex, names]);
+
+  return (
+    <span className="typing-name">
+      {currentText}
+      <span className="cursor" />
+    </span>
+  );
+};
+
+const COLORS = [
+  '#1976d2', // Blue
+  '#388e3c', // Green
+  '#d32f2f', // Red
+  '#7b1fa2', // Purple
+  '#c2185b', // Pink
+  '#f57c00', // Orange
+  '#455a64', // Blue Grey
+  '#5d4037', // Brown
+];
 
 const QuizApp = () => {
   const [ws, setWs] = useState(null);
@@ -66,6 +135,7 @@ const QuizApp = () => {
   const [wsInstance, setWsInstance] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [buttonCooldown, setButtonCooldown] = useState(0);
+  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
 
   const connectWebSocket = useCallback(() => {
     if (wsInstance) {
@@ -87,7 +157,8 @@ const QuizApp = () => {
       });
     }, 1000);
 
-    const socket = new WebSocket('ws://89.110.123.46:3000/');
+    // const socket = new WebSocket('ws://89.110.123.46:3000/');
+    const socket = new WebSocket('ws://localhost:3000/');
 
     socket.onopen = () => {
       console.log('Connected to server');
@@ -100,7 +171,7 @@ const QuizApp = () => {
           type: 'JOIN_GAME',
           payload: {
             name: playerName,
-            color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+            color: selectedColor,
           },
         })
       );
@@ -125,7 +196,7 @@ const QuizApp = () => {
     };
 
     return socket;
-  }, [playerName]);
+  }, [playerName, selectedColor]);
 
   const handleServerMessage = data => {
     if (data.type === 'GAME_STATE_UPDATE') {
@@ -184,13 +255,44 @@ const QuizApp = () => {
   const renderJoinScreen = () => (
     <div className="join-screen">
       <h2>Join Quiz Game</h2>
-      <input
-        type="text"
-        placeholder="Enter your name"
-        value={playerName}
-        onChange={e => setPlayerName(e.target.value)}
-      />
-      <button onClick={joinGame}>Join Game</button>
+      <div className="input-container">
+        <input
+          type="text"
+          placeholder="Enter your name"
+          value={playerName}
+          onChange={e => setPlayerName(e.target.value)}
+          className={
+            playerName.length > 0 && playerName.length < 4 ? 'invalid' : ''
+          }
+        />
+        {playerName.length > 0 && playerName.length < 4 && (
+          <span className="input-error">
+            Name must be at least 4 characters
+          </span>
+        )}
+      </div>
+      <div className="color-picker-container">
+        <span className="color-picker-label">Choose your player color:</span>
+        <div className="color-picker">
+          {COLORS.map(color => (
+            <button
+              key={color}
+              className={`color-option ${
+                selectedColor === color ? 'selected' : ''
+              }`}
+              style={{ backgroundColor: color }}
+              onClick={() => setSelectedColor(color)}
+              aria-label={`Select ${color} color`}
+            />
+          ))}
+        </div>
+      </div>
+      <button
+        onClick={joinGame}
+        disabled={!playerName || playerName.length < 4}
+      >
+        Join Game
+      </button>
     </div>
   );
 
@@ -236,7 +338,11 @@ const QuizApp = () => {
 
   const renderWaitingScreen = () => (
     <div className="waiting-screen">
-      <h2>Waiting for Next Question</h2>
+      <h2>
+        <span className="static-text">Waiting for </span>
+        <TypeWriter names={['Vitali', 'someone', 'the host']} />
+        <span className="static-text"> to start</span>
+      </h2>
     </div>
   );
 
